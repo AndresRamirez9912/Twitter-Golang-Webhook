@@ -14,6 +14,7 @@ func main() {
 
 	// Handlers
 	router.Get("/", handler.IndexHandler)
+	router.Post("/", handler.IndexHandler)
 	router.Get("/webhook", handler.WebhookHandler)
 
 	// Start Webhook
