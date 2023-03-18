@@ -5,3 +5,5 @@ go 1.19
 require github.com/go-chi/chi v1.5.4
 
 require github.com/google/uuid v1.3.0
+
+require github.com/robfig/cron v1.2.0
