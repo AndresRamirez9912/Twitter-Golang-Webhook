@@ -5,10 +5,13 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,59 +22,87 @@ type oauth struct {
 	consumer_key_secret string
 	base_URL            string
 	method              string
+	oauth_token         string
+	oauth_token_secret  string
 }
 
-func CreateoAuth(Consumer_key string, Consumer_key_secret string, Base_URL string, Method string) *oauth {
+func CreateoAuth(
+	api_key string,
+	api_key_secret string,
+	base_URL string,
+	method string,
+	access_token string,
+	access_secret string) *oauth {
+
 	return &oauth{
-		consumer_key:        Consumer_key,
-		consumer_key_secret: Consumer_key_secret,
-		base_URL:            Base_URL,
-		method:              Method,
+		consumer_key:        api_key,
+		consumer_key_secret: api_key_secret,
+		base_URL:            base_URL,
+		method:              method,
+		oauth_token:         access_token,
+		oauth_token_secret:  access_secret,
 	}
 }
 
 func (auth oauth) GetoauthToken() {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-	nonce := uuid.NewString()
-	req, err := auth.createRequest(timestamp, nonce)
+	nonce := base64.StdEncoding.EncodeToString([]byte(uuid.NewString()))
+
+	baseString := auth.createBaseString(timestamp, nonce)
+	signature := createSignature(baseString, auth.consumer_key_secret, auth.oauth_token_secret)
+
+	req, err := auth.createRequest(timestamp, nonce, signature)
 	if err != nil {
 
 	}
-	auth.createBaseString(timestamp, nonce)
-	fmt.Println("Request formada::::", req.URL.String())
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+
+	}
+	fmt.Println(string(body))
 }
 
-func (auth oauth) createRequest(timestamp string, nonce string) (*http.Request, error) {
+func (auth oauth) createRequest(timestamp string, nonce string, signature string) (*http.Request, error) {
 	req, err := http.NewRequest(auth.method, auth.base_URL, nil)
 	if err != nil {
 		log.Print("Error Creating the request")
 		return nil, err
 	}
-	query := req.URL.Query()
-	query.Add("oauth_consumer_key", auth.consumer_key)
-	query.Add("oauth_signature_method", "HMAC-SHA1")
-	query.Add("oauth_timestamp", timestamp)
-	query.Add("oauth_nonce", nonce)
-	query.Add("oauth_version", "1.0")
-	query.Add("oauth_signature", "")
 
-	req.URL.RawQuery = query.Encode()
+	authHeade := fmt.Sprintf(`OAuth oauth_consumer_key="%s", oauth_nonce="%s", oauth_signature="%s", oauth_signature_method="HMAC-SHA1", oauth_timestamp="%s", oauth_token="%s", oauth_version="1.0"`, auth.consumer_key, nonce, url.QueryEscape(signature), timestamp, auth.oauth_token)
+
+	// Add Headers
+	req.Header = http.Header{
+		"Accept":        {"*/*"},
+		"Authorization": {authHeade},
+		"Connection":    {"close"},
+		"Content-Type":  {"application/x-www-form-urlencoded"},
+	}
 	return req, nil
 }
 
-func createSignature(baseURL string, key string) string {
-	h := hmac.New(sha1.New, []byte(key))
+func createSignature(baseURL string, consumer_secret string, oauth_token_secret string) string {
+	signing_key := fmt.Sprintf("%s&%s", url.QueryEscape(consumer_secret), url.QueryEscape(oauth_token_secret))
+	h := hmac.New(sha1.New, []byte(signing_key))
 	h.Write([]byte(baseURL))
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
-func (auth oauth) createBaseString(timestamp string, nonce string) {
+func (auth oauth) createBaseString(timestamp string, nonce string) string {
 	parameters := map[string]string{
 		"oauth_consumer_key":     auth.consumer_key,
-		"oauth_signature_method": auth.method,
+		"oauth_signature_method": "HMAC-SHA1",
 		"oauth_timestamp":        timestamp,
 		"oauth_nonce":            nonce,
 		"oauth_version":          "1.0",
+		"oauth_token":            auth.oauth_token,
 	}
 
 	orderedKeys := make([]string, 0, len(parameters))
@@ -82,10 +113,10 @@ func (auth oauth) createBaseString(timestamp string, nonce string) {
 	encodedParameters := " "
 	for k := range orderedKeys {
 		if encodedParameters == " " {
-			encodedParameters = fmt.Sprintf("%s=%s", orderedKeys[k], parameters[orderedKeys[k]])
+			encodedParameters = url.QueryEscape(fmt.Sprintf("%s=%s", orderedKeys[k], parameters[orderedKeys[k]]))
 		} else {
-			encodedParameters += encodedParameters + fmt.Sprintf("&%s=%s", orderedKeys[k], parameters[orderedKeys[k]])
+			encodedParameters += url.QueryEscape(fmt.Sprintf("&%s=%s", orderedKeys[k], parameters[orderedKeys[k]]))
 		}
 	}
-	fmt.Println("Base Stirng::::", encodedParameters)
+	return fmt.Sprintf("%s&%s&%s", strings.ToUpper(auth.method), url.QueryEscape(auth.base_URL), encodedParameters)
 }
