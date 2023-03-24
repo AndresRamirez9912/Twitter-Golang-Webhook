@@ -6,20 +6,27 @@ import (
 	"twitter-webhook/src/handler"
 
 	"github.com/go-chi/chi"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load .env Variables
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal("Error loading .env File")
+	}
+
 	// Start Router
 	router := chi.NewRouter()
 
 	// Handlers
-	router.Get("/", handler.IndexHandler)
-	router.Post("/", handler.IndexHandler)
+	router.Get("/login", handler.LogIn)
+	router.HandleFunc("/callback", handler.Authorize)
 	router.Get("/webhook", handler.WebhookHandler)
 
-	// Start Webhook
+	// Start API
 	log.Println("Starting Webhook at port 3000")
-	err := http.ListenAndServe(":3000", router)
+	err = http.ListenAndServe(":3000", router)
 	if err != nil {
 		log.Fatal("Error starting webhopok at port 3000")
 	}
