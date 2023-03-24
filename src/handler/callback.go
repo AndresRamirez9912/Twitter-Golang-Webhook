@@ -1,12 +1,11 @@
 package handler
 
 import (
-	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"twitter-webhook/src/constants"
-	"twitter-webhook/src/oauth"
+	"twitter-webhook/src/utils"
 )
 
 func Authorize(w http.ResponseWriter, req *http.Request) {
@@ -17,19 +16,16 @@ func Authorize(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 
 	}
-	client := &http.Client{}
-	res, err := client.Do(req)
+	body, err := utils.SendRequest(req)
 	if err != nil {
 
 	}
-	defer res.Body.Close()
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-
-	}
-	accessTokens := oauth.GetOAuthParameters(string(body))
-	fmt.Println(accessTokens)
+	// Store the Credentials into env variables
+	accessTokens := utils.GetOAuthParameters(string(body))
+	os.Setenv(constants.OAUTH_TOKEN, accessTokens[constants.OAUTH_TOKEN])
+	os.Setenv(constants.OAUTH_TOKEN_SECRET, accessTokens[constants.OAUTH_TOKEN_SECRET])
+	os.Setenv(constants.SCREEN_NAME, accessTokens[constants.SCREEN_NAME])
+	os.Setenv(constants.USER_ID, accessTokens[constants.USER_ID])
 }
 
 func createRequest(oauth_token string, oauth_verifier string) (*http.Request, error) {
@@ -45,6 +41,5 @@ func createRequest(oauth_token string, oauth_verifier string) (*http.Request, er
 	q.Add(constants.OAUTH_VERIFIER, oauth_verifier)
 
 	req.URL.RawQuery = q.Encode() // Assign the new query parameters into the request
-	fmt.Println(req.URL.String())
 	return req, nil
 }

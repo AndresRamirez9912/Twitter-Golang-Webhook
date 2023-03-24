@@ -5,7 +5,6 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -14,6 +13,7 @@ import (
 	"strings"
 	"time"
 	"twitter-webhook/src/constants"
+	"twitter-webhook/src/utils"
 
 	"github.com/google/uuid"
 )
@@ -56,18 +56,11 @@ func (auth oauth) GetoauthToken() map[string]string {
 	if err != nil {
 
 	}
-	client := &http.Client{}
-	res, err := client.Do(req)
+	body, err := utils.SendRequest(req)
 	if err != nil {
 
 	}
-	defer res.Body.Close()
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-
-	}
-	return GetOAuthParameters(string(body))
+	return utils.GetOAuthParameters(string(body))
 }
 
 func (auth oauth) createBaseString(timestamp string, nonce string) string {
@@ -118,16 +111,6 @@ func (auth oauth) createRequest(timestamp string, nonce string, signature string
 		constants.CONNECTION:    {"close"},
 	}
 	return req, nil
-}
-
-func GetOAuthParameters(response string) map[string]string {
-	result := make(map[string]string)
-	data := strings.Split(response, "&")
-	for _, parameter := range data {
-		elements := strings.Split(parameter, "=")
-		result[elements[0]] = elements[1]
-	}
-	return result
 }
 
 func (auth oauth) GetValidationLink(oauthParameters map[string]string) {

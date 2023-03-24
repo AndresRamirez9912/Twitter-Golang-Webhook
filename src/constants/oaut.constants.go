@@ -13,6 +13,9 @@ const OAUTH_VERSION = "oauth_version"
 const OAUTH_TOKEN = "oauth_token"
 const OAUTH_METHOD = "HMAC-SHA1"
 const OAUTH_VERIFIER = "oauth_verifier"
+const OAUTH_TOKEN_SECRET = "oauth_token_secret"
+const SCREEN_NAME = "screen_name"
+const USER_ID = "user_id"
 
 // Twitter Credentials
 const API_KEY = "API_KEY"
