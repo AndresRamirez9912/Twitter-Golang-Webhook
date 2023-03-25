@@ -22,7 +22,7 @@ import (
 type oauth struct {
 	consumer_key        string
 	consumer_key_secret string
-	base_URL            string
+	URL                 string
 	method              string
 	oauth_token         string
 	oauth_token_secret  string
@@ -31,7 +31,7 @@ type oauth struct {
 func CreateoAuth(
 	api_key string,
 	api_key_secret string,
-	base_URL string,
+	URL string,
 	method string,
 	access_token string,
 	access_secret string) *oauth {
@@ -39,7 +39,7 @@ func CreateoAuth(
 	return &oauth{
 		consumer_key:        api_key,
 		consumer_key_secret: api_key_secret,
-		base_URL:            base_URL,
+		URL:                 constants.BASE_URL + URL,
 		method:              method,
 		oauth_token:         access_token,
 		oauth_token_secret:  access_secret,
@@ -96,7 +96,7 @@ func (auth oauth) createBaseString(timestamp string, nonce string) string {
 			encodedParameters += url.QueryEscape(fmt.Sprintf("&%s=%s", orderedKeys[k], parameters[orderedKeys[k]]))
 		}
 	}
-	return fmt.Sprintf("%s&%s&%s", strings.ToUpper(auth.method), url.QueryEscape(auth.base_URL), encodedParameters)
+	return fmt.Sprintf("%s&%s&%s", strings.ToUpper(auth.method), url.QueryEscape(auth.URL), encodedParameters)
 }
 
 func createSignature(baseURL string, consumer_secret string, oauth_token_secret string) string {
@@ -107,7 +107,7 @@ func createSignature(baseURL string, consumer_secret string, oauth_token_secret 
 }
 
 func (auth oauth) createRequest(timestamp string, nonce string, signature string, body []byte) (*http.Request, error) {
-	req, err := http.NewRequest(auth.method, auth.base_URL, bytes.NewBuffer(body))
+	req, err := http.NewRequest(auth.method, auth.URL, bytes.NewBuffer(body))
 	if err != nil {
 		log.Print("Error Creating the request")
 		return nil, err
@@ -119,6 +119,7 @@ func (auth oauth) createRequest(timestamp string, nonce string, signature string
 		constants.ACCEPT:        {"*/*"},
 		constants.AUTHORIZATION: {authHeade},
 		constants.CONNECTION:    {"close"},
+		constants.CONTENT_TYPE:  {constants.APPLICATION_JSON},
 	}
 	return req, nil
 }
