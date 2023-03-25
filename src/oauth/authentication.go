@@ -1,6 +1,7 @@
 package oauth
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/base64"
@@ -45,22 +46,31 @@ func CreateoAuth(
 	}
 }
 
-func (auth oauth) GetoauthToken() map[string]string {
+func (auth oauth) SendOAuthRequest() []byte {
+	req, err := auth.CreateOAuthRequest(nil) // I don't need Body
+	if err != nil {
+		log.Fatal(err)
+	}
+	body, err := utils.SendRequest(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return body
+}
+
+func (auth oauth) CreateOAuthRequest(body []byte) (*http.Request, error) {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	nonce := base64.StdEncoding.EncodeToString([]byte(uuid.NewString()))
 
 	baseString := auth.createBaseString(timestamp, nonce)
 	signature := createSignature(baseString, auth.consumer_key_secret, auth.oauth_token_secret)
 
-	req, err := auth.createRequest(timestamp, nonce, signature)
+	req, err := auth.createRequest(timestamp, nonce, signature, body)
 	if err != nil {
-
+		log.Fatal(err)
+		return nil, err
 	}
-	body, err := utils.SendRequest(req)
-	if err != nil {
-
-	}
-	return utils.GetOAuthParameters(string(body))
+	return req, nil
 }
 
 func (auth oauth) createBaseString(timestamp string, nonce string) string {
@@ -96,8 +106,8 @@ func createSignature(baseURL string, consumer_secret string, oauth_token_secret 
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
-func (auth oauth) createRequest(timestamp string, nonce string, signature string) (*http.Request, error) {
-	req, err := http.NewRequest(auth.method, auth.base_URL, nil)
+func (auth oauth) createRequest(timestamp string, nonce string, signature string, body []byte) (*http.Request, error) {
+	req, err := http.NewRequest(auth.method, auth.base_URL, bytes.NewBuffer(body))
 	if err != nil {
 		log.Print("Error Creating the request")
 		return nil, err

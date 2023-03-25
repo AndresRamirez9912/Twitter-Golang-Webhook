@@ -5,6 +5,7 @@ import (
 	"os"
 	"twitter-webhook/src/constants"
 	"twitter-webhook/src/oauth"
+	"twitter-webhook/src/utils"
 )
 
 func LogIn(w http.ResponseWriter, req *http.Request) {
@@ -15,6 +16,6 @@ func LogIn(w http.ResponseWriter, req *http.Request) {
 		constants.POST,                           // Method
 		os.Getenv(constants.ACCESS_TOKEN),        // Access Token
 		os.Getenv(constants.ACCESS_TOKEN_SECRET)) // Access Secret
-	oauthParameters := oaut.GetoauthToken()
+	oauthParameters := utils.GetOAuthParameters(string(oaut.SendOAuthRequest()))
 	oaut.GetValidationLink(oauthParameters)
 }
