@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -29,20 +30,16 @@ type oauth struct {
 }
 
 func CreateoAuth(
-	api_key string,
-	api_key_secret string,
 	URL string,
-	method string,
-	access_token string,
-	access_secret string) *oauth {
+	method string) *oauth {
 
 	return &oauth{
-		consumer_key:        api_key,
-		consumer_key_secret: api_key_secret,
+		consumer_key:        os.Getenv(constants.API_KEY),        // API KEY,
+		consumer_key_secret: os.Getenv(constants.API_KEY_SECRET), // API Secret
 		URL:                 constants.BASE_URL + URL,
 		method:              method,
-		oauth_token:         access_token,
-		oauth_token_secret:  access_secret,
+		oauth_token:         os.Getenv(constants.ACCESS_TOKEN),        // Access Token
+		oauth_token_secret:  os.Getenv(constants.ACCESS_TOKEN_SECRET), // Access Secret
 	}
 }
 
@@ -126,4 +123,5 @@ func (auth oauth) createRequest(timestamp string, nonce string, signature string
 
 func (auth oauth) GetValidationLink(oauthParameters map[string]string) {
 	fmt.Printf(constants.VALIDATION_LINK_TEMPLATE, oauthParameters[constants.OAUTH_TOKEN])
+	fmt.Println()
 }

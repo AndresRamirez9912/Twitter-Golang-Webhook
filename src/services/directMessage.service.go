@@ -4,22 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"twitter-webhook/src/constants"
 	"twitter-webhook/src/models"
 	"twitter-webhook/src/oauth"
 	"twitter-webhook/src/utils"
 )
 
+// Write direct message to one person
 func SendDirectMesage(userId string, message string) {
 	urlSendMessage := fmt.Sprintf(constants.SEND_DIRECT_MESSAGE_ENDPOINT, userId)
-	oaut := oauth.CreateoAuth(
-		os.Getenv(constants.API_KEY),             // API KEY
-		os.Getenv(constants.API_KEY_SECRET),      // API Secret
-		urlSendMessage,                           // URL with the id of the user to send message
-		constants.POST,                           // Method
-		os.Getenv(constants.ACCESS_TOKEN),        // Access Token
-		os.Getenv(constants.ACCESS_TOKEN_SECRET)) // Access Secret
+	oaut := oauth.CreateoAuth(urlSendMessage, constants.POST)
 
 	dMBody := &models.DirectMessageRequestBody{
 		Text: message,
@@ -44,17 +38,12 @@ func SendDirectMesage(userId string, message string) {
 	if err != nil {
 
 	}
-	fmt.Println(dmResponse)
+	fmt.Printf("%+v\n", dmResponse)
 }
 
+// Get all direct messages
 func LookDirectMessages() {
-	oaut := oauth.CreateoAuth(
-		os.Getenv(constants.API_KEY),             // API KEY
-		os.Getenv(constants.API_KEY_SECRET),      // API Secret
-		constants.LOOKUP_DIRECT_MESSAGES,         // URL with the id of the user to send message
-		constants.GET,                            // Method
-		os.Getenv(constants.ACCESS_TOKEN),        // Access Token
-		os.Getenv(constants.ACCESS_TOKEN_SECRET)) // Access Secret
+	oaut := oauth.CreateoAuth(constants.LOOKUP_DIRECT_MESSAGES, constants.GET)
 
 	req, err := oaut.CreateOAuthRequest(nil)
 	if err != nil {
@@ -65,5 +54,11 @@ func LookDirectMessages() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(string(body))
+	lookUpDMResponse := &models.LookUpDirectMessageResponse{}
+	err = json.Unmarshal(body, lookUpDMResponse)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%+v\n", lookUpDMResponse)
+
 }

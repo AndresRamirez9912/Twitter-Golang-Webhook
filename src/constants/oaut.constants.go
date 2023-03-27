@@ -1,8 +1,8 @@
 package constants
 
 // OAuth Links
-const REQUEST_TOKEN_URL = "https://api.twitter.com/oauth/request_token"
-const ACCESS_TOKEN_URL = "https://api.twitter.com/oauth/access_token"
+const REQUEST_TOKEN_URL = "/oauth/request_token"
+const ACCESS_TOKEN_URL = "/oauth/access_token"
 
 // OAuth Parameters
 const OAUTH_CONSUMER_KEY = "oauth_consumer_key"
