@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"twitter-webhook/src/database"
 	"twitter-webhook/src/handler"
 
 	"github.com/go-chi/chi"
@@ -23,6 +24,12 @@ func main() {
 	router.Get("/login", handler.LogIn)
 	router.Get("/callback", handler.Authorize)
 	router.Get("/webhook", handler.WebhookHandler)
+
+	// Create Dynamo Table
+	err = database.CreateTableDynamodb()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Start API
 	log.Println("Starting Webhook at port 3000")
