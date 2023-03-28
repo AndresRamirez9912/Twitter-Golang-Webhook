@@ -42,7 +42,8 @@ func SendDirectMesage(userId string, message string) {
 }
 
 // Get all direct messages
-func LookDirectMessages() {
+// Los segundos parentesis son los datos de salida
+func LookDirectMessages() (*models.LookUpDirectMessageResponse, error) {
 	oaut := oauth.CreateoAuth(constants.LOOKUP_DIRECT_MESSAGES, constants.GET)
 
 	req, err := oaut.CreateOAuthRequest(nil)
@@ -59,6 +60,6 @@ func LookDirectMessages() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%+v\n", lookUpDMResponse)
+	return lookUpDMResponse, nil
 
 }

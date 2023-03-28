@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"twitter-webhook/src/crones"
 	"twitter-webhook/src/handler"
 
 	"github.com/go-chi/chi"
@@ -25,6 +26,8 @@ func main() {
 	router.Get("/webhook", handler.WebhookHandler)
 
 	// Start API
+	//crones.Cron()
+	crones.WaitMessages()
 	log.Println("Starting Webhook at port 3000")
 	err = http.ListenAndServe(":3000", router)
 	if err != nil {
