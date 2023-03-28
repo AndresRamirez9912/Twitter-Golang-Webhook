@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"twitter-webhook/src/constants"
 	"twitter-webhook/src/models"
@@ -14,20 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 )
 
-func createDynamoCLient() (*dynamodb.Client, error) {
-	// Set AWS
-	config, err := config.LoadDefaultConfig(context.TODO(), func(opts *config.LoadOptions) error {
-		opts.Region = constants.AWS_REGION
-		return nil
-	})
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
-	// Create the dynamodb Client
-	dynamoClient := dynamodb.NewFromConfig(config)
-	return dynamoClient, nil
-}
 func CreateTableDynamodb() error {
 	dynamoClient, err := createDynamoCLient()
 	if err != nil {
@@ -86,7 +71,6 @@ func GetItemById(id string) (*dynamodb.GetItemOutput, error) {
 		return nil, err
 	}
 
-	fmt.Println(items.Item)
 	return items, nil
 }
 
@@ -108,15 +92,55 @@ func CreateItem(dataField models.TwitterField) error {
 		TableName: aws.String(constants.TABLE_NAME),
 	}
 
-	items, err := dynamoClient.PutItem(context.TODO(), input)
+	_, err = dynamoClient.PutItem(context.TODO(), input)
 
 	if err != nil {
 		log.Fatal(err)
 		return err
 	}
 
-	fmt.Println(items.Attributes)
 	return nil
+}
+
+func FinishedCoversation(id string) error {
+	dynamoClient, err := createDynamoCLient()
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	_, err = dynamoClient.UpdateItem(context.TODO(), &dynamodb.UpdateItemInput{
+		TableName: aws.String(constants.TABLE_NAME),
+		Key: map[string]types.AttributeValue{
+			"Id": &types.AttributeValueMemberS{Value: id},
+		},
+		UpdateExpression: aws.String("set Active = :active"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":active": &types.AttributeValueMemberBOOL{Value: false},
+		},
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return nil
+}
+
+func createDynamoCLient() (*dynamodb.Client, error) {
+	// Set AWS
+	config, err := config.LoadDefaultConfig(context.TODO(), func(opts *config.LoadOptions) error {
+		opts.Region = constants.AWS_REGION
+		return nil
+	})
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+	// Create the dynamodb Client
+	dynamoClient := dynamodb.NewFromConfig(config)
+
+	return dynamoClient, nil
 }
 
 func tableExist(dynamoClient *dynamodb.Client) (bool, error) {
@@ -130,5 +154,6 @@ func tableExist(dynamoClient *dynamodb.Client) (bool, error) {
 			return true, nil
 		}
 	}
+
 	return false, nil
 }
