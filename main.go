@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"twitter-webhook/src/crones"
+	"twitter-webhook/src/database"
 	"twitter-webhook/src/handler"
 
 	"github.com/go-chi/chi"
@@ -24,6 +25,17 @@ func main() {
 	router.Get("/login", handler.LogIn)
 	router.Get("/callback", handler.Authorize)
 	router.Get("/webhook", handler.WebhookHandler)
+
+	// Create Dynamo Table
+	err = database.CreateTableDynamodb()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = database.FinishedCoversation("5e968c86-44c0-4ff5-9dd2-a5339ac05733")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Start API
 	//crones.Cron()
