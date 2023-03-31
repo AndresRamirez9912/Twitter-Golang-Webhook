@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"twitter-webhook/src/cron"
 	"twitter-webhook/src/database"
 	"twitter-webhook/src/handler"
 
@@ -30,6 +31,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Start Cron
+	_ = cron.WaitMessages()
 
 	// Start API
 	log.Println("Starting Webhook at port 3000")

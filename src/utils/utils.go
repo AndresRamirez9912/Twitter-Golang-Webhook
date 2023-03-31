@@ -17,8 +17,9 @@ func CreateRequest(method string, URL string, body []byte) (*http.Request, error
 	}
 
 	req.Header = http.Header{
-		constants.ACCEPT:     {"*/*"},
-		constants.CONNECTION: {"close"},
+		constants.ACCEPT:       {"*/*"},
+		constants.CONNECTION:   {"close"},
+		constants.CONTENT_TYPE: {constants.APPLICATION_JSON},
 	}
 	return req, nil
 }
