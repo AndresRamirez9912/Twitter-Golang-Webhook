@@ -29,7 +29,7 @@ func SendDirectMesage(userId string, message string) error {
 		log.Fatal(err)
 		return err
 	}
-
+	fmt.Println(string(body))
 	dmResponse := &models.DirectMessageResponse{}
 	err = json.Unmarshal(body, dmResponse)
 	if err != nil {

@@ -34,7 +34,6 @@ func report() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	// Comparar si son diferentes (iterar la cantidad de mensajes nuevos)
 	if Cont != messages.Meta.Result_count && messages.Data[0].Sender_id != constants.ID_BOT {
 		entry := models.TwitterField{
@@ -49,6 +48,6 @@ func report() {
 		}
 		Cont = messages.Meta.Result_count
 		// Enviar Respuesta al cliente
-		services.SendDirectMesage("1638652102212743168", "El bot del banco Popular te da la Bienvenida")
+		services.SendDirectMesage(entry.Id, "El bot del banco Popular te da la Bienvenida")
 	}
 }
