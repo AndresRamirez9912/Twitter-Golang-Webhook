@@ -1,7 +1,6 @@
 package oauth
 
 import (
-	"bytes"
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/base64"
@@ -43,8 +42,8 @@ func CreateoAuth(
 	}
 }
 
-func (auth oauth) SendOAuthRequest(body []byte, queries map[string]string) ([]byte, error) {
-	req, err := auth.CreateOAuthRequest(body, queries)
+func (auth oauth) SendOAuthRequest(body []byte) ([]byte, error) {
+	req, err := auth.createOAuthRequest(body)
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
@@ -57,21 +56,22 @@ func (auth oauth) SendOAuthRequest(body []byte, queries map[string]string) ([]by
 	return bodyResponse, nil
 }
 
-func (auth oauth) CreateOAuthRequest(body []byte, queries map[string]string) (*http.Request, error) {
+func (auth oauth) createOAuthRequest(body []byte) (*http.Request, error) {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	nonce := base64.StdEncoding.EncodeToString([]byte(uuid.NewString()))
 
-	baseString := auth.createBaseString(timestamp, nonce, queries)
-	signature := createSignature(baseString, auth.consumer_key_secret, auth.oauth_token_secret)
-	req, err := auth.createRequest(timestamp, nonce, signature, body)
+	req, err := utils.CreateRequest(auth.method, auth.URL, body)
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
 	}
+	baseString := auth.createBaseString(timestamp, nonce, req)
+	signature := createSignature(baseString, auth.consumer_key_secret, auth.oauth_token_secret)
+	auth.sign(signature, timestamp, nonce, req)
 	return req, nil
 }
 
-func (auth oauth) createBaseString(timestamp string, nonce string, queries map[string]string) string {
+func (auth oauth) createBaseString(timestamp string, nonce string, req *http.Request) string {
 	parameters := map[string]string{
 		constants.OAUTH_CONSUMER_KEY:     auth.consumer_key,
 		constants.OAUTH_SIGNATURE_METHOD: constants.OAUTH_METHOD,
@@ -88,11 +88,11 @@ func (auth oauth) createBaseString(timestamp string, nonce string, queries map[s
 	sort.Strings(orderedKeys)
 	encodedQueries := ""
 
-	for k, v := range queries {
+	for k, v := range req.URL.Query() {
 		if encodedQueries == "" {
-			encodedQueries = url.QueryEscape(fmt.Sprintf("%s=%s", k, url.QueryEscape(v)))
+			encodedQueries = url.QueryEscape(fmt.Sprintf("%s=%s", k, url.QueryEscape(v[0])))
 		} else {
-			encodedQueries += url.QueryEscape(fmt.Sprintf("&%s=%s", k, url.QueryEscape(v)))
+			encodedQueries += url.QueryEscape(fmt.Sprintf("&%s=%s", k, url.QueryEscape(v[0])))
 		}
 	}
 
@@ -104,7 +104,7 @@ func (auth oauth) createBaseString(timestamp string, nonce string, queries map[s
 			encodedParameters += url.QueryEscape(fmt.Sprintf("&%s=%s", orderedKeys[k], parameters[orderedKeys[k]]))
 		}
 	}
-	return fmt.Sprintf("%s&%s&%s", strings.ToUpper(auth.method), url.QueryEscape(auth.URL), (encodedQueries + encodedParameters))
+	return fmt.Sprintf("%s&%s&%s", strings.ToUpper(auth.method), url.QueryEscape(constants.BASE_URL+req.URL.Path), (encodedQueries + encodedParameters))
 }
 
 func createSignature(baseURL string, consumer_secret string, oauth_token_secret string) string {
@@ -114,21 +114,9 @@ func createSignature(baseURL string, consumer_secret string, oauth_token_secret 
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
-func (auth oauth) createRequest(timestamp string, nonce string, signature string, body []byte) (*http.Request, error) {
-
-	req, err := http.NewRequest(auth.method, auth.URL+"?"+constants.DM_EVENT_FIELDS_QUERY+"="+constants.DM_EVENT_FIELDS_VALUE, bytes.NewBuffer(body))
-	if err != nil {
-		log.Print("Error Creating the request")
-		return nil, err
-	}
-
+func (auth oauth) sign(signature string, timestamp string, nonce string, req *http.Request) {
 	authHeader := fmt.Sprintf(constants.AUTHORIZATION_TEMPLATE, auth.consumer_key, nonce, url.QueryEscape(signature), timestamp, auth.oauth_token)
-	req.Header = http.Header{
-		constants.ACCEPT:        {"*/*"},
-		constants.AUTHORIZATION: {authHeader},
-		constants.CONNECTION:    {"close"},
-	}
-	return req, nil
+	req.Header.Add(constants.AUTHORIZATION, authHeader)
 }
 
 func (auth oauth) GetValidationLink(oauthParameters map[string]string) {

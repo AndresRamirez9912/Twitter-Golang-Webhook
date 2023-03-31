@@ -12,7 +12,7 @@ func LogIn(w http.ResponseWriter, req *http.Request) {
 	oaut := oauth.CreateoAuth(
 		constants.REQUEST_TOKEN_URL, // Base URL
 		constants.POST)              // Access Secret
-	body, err := oaut.SendOAuthRequest(nil, nil)
+	body, err := oaut.SendOAuthRequest(nil)
 	if err != nil {
 		log.Fatal(err)
 	}
