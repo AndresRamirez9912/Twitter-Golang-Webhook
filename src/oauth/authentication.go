@@ -43,25 +43,26 @@ func CreateoAuth(
 	}
 }
 
-func (auth oauth) SendOAuthRequest() []byte {
-	req, err := auth.CreateOAuthRequest(nil) // I don't need Body
+func (auth oauth) SendOAuthRequest(body []byte, queries map[string]string) ([]byte, error) {
+	req, err := auth.CreateOAuthRequest(body, queries)
 	if err != nil {
 		log.Fatal(err)
+		return nil, err
 	}
-	body, err := utils.SendRequest(req)
+	bodyResponse, err := utils.SendRequest(req)
 	if err != nil {
 		log.Fatal(err)
+		return nil, err
 	}
-	return body
+	return bodyResponse, nil
 }
 
-func (auth oauth) CreateOAuthRequest(body []byte) (*http.Request, error) {
+func (auth oauth) CreateOAuthRequest(body []byte, queries map[string]string) (*http.Request, error) {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	nonce := base64.StdEncoding.EncodeToString([]byte(uuid.NewString()))
 
-	baseString := auth.createBaseString(timestamp, nonce)
+	baseString := auth.createBaseString(timestamp, nonce, queries)
 	signature := createSignature(baseString, auth.consumer_key_secret, auth.oauth_token_secret)
-
 	req, err := auth.createRequest(timestamp, nonce, signature, body)
 	if err != nil {
 		log.Fatal(err)
@@ -70,7 +71,7 @@ func (auth oauth) CreateOAuthRequest(body []byte) (*http.Request, error) {
 	return req, nil
 }
 
-func (auth oauth) createBaseString(timestamp string, nonce string) string {
+func (auth oauth) createBaseString(timestamp string, nonce string, queries map[string]string) string {
 	parameters := map[string]string{
 		constants.OAUTH_CONSUMER_KEY:     auth.consumer_key,
 		constants.OAUTH_SIGNATURE_METHOD: constants.OAUTH_METHOD,
@@ -85,15 +86,25 @@ func (auth oauth) createBaseString(timestamp string, nonce string) string {
 		orderedKeys = append(orderedKeys, k)
 	}
 	sort.Strings(orderedKeys)
-	encodedParameters := " "
+	encodedQueries := ""
+
+	for k, v := range queries {
+		if encodedQueries == "" {
+			encodedQueries = url.QueryEscape(fmt.Sprintf("%s=%s", k, url.QueryEscape(v)))
+		} else {
+			encodedQueries += url.QueryEscape(fmt.Sprintf("&%s=%s", k, url.QueryEscape(v)))
+		}
+	}
+
+	encodedParameters := ""
 	for k := range orderedKeys {
-		if encodedParameters == " " {
+		if encodedParameters == "" && encodedQueries == "" {
 			encodedParameters = url.QueryEscape(fmt.Sprintf("%s=%s", orderedKeys[k], parameters[orderedKeys[k]]))
 		} else {
 			encodedParameters += url.QueryEscape(fmt.Sprintf("&%s=%s", orderedKeys[k], parameters[orderedKeys[k]]))
 		}
 	}
-	return fmt.Sprintf("%s&%s&%s", strings.ToUpper(auth.method), url.QueryEscape(auth.URL), encodedParameters)
+	return fmt.Sprintf("%s&%s&%s", strings.ToUpper(auth.method), url.QueryEscape(auth.URL), (encodedQueries + encodedParameters))
 }
 
 func createSignature(baseURL string, consumer_secret string, oauth_token_secret string) string {
@@ -104,24 +115,22 @@ func createSignature(baseURL string, consumer_secret string, oauth_token_secret 
 }
 
 func (auth oauth) createRequest(timestamp string, nonce string, signature string, body []byte) (*http.Request, error) {
-	req, err := http.NewRequest(auth.method, auth.URL, bytes.NewBuffer(body))
+
+	req, err := http.NewRequest(auth.method, auth.URL+"?"+constants.DM_EVENT_FIELDS_QUERY+"="+constants.DM_EVENT_FIELDS_VALUE, bytes.NewBuffer(body))
 	if err != nil {
 		log.Print("Error Creating the request")
 		return nil, err
 	}
 
-	authHeade := fmt.Sprintf(constants.AUTHORIZATION_TEMPLATE, auth.consumer_key, nonce, url.QueryEscape(signature), timestamp, auth.oauth_token)
-
+	authHeader := fmt.Sprintf(constants.AUTHORIZATION_TEMPLATE, auth.consumer_key, nonce, url.QueryEscape(signature), timestamp, auth.oauth_token)
 	req.Header = http.Header{
 		constants.ACCEPT:        {"*/*"},
-		constants.AUTHORIZATION: {authHeade},
+		constants.AUTHORIZATION: {authHeader},
 		constants.CONNECTION:    {"close"},
-		constants.CONTENT_TYPE:  {constants.APPLICATION_JSON},
 	}
 	return req, nil
 }
 
 func (auth oauth) GetValidationLink(oauthParameters map[string]string) {
-	fmt.Printf(constants.VALIDATION_LINK_TEMPLATE, oauthParameters[constants.OAUTH_TOKEN])
-	fmt.Println()
+	fmt.Printf(constants.VALIDATION_LINK_TEMPLATE+"\n", oauthParameters[constants.OAUTH_TOKEN])
 }
