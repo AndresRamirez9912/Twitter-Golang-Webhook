@@ -45,7 +45,6 @@ func report() {
 		entry := models.TwitterField{
 			Id:            uuid.New().String(),
 			CreatedAt:     time.Now().String(),
-			ClientId:      uuid.New().String(),
 			Active:        true,
 			LastMessageId: messages.Data[0].Id,
 		}

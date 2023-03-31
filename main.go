@@ -32,11 +32,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = database.FinishedCoversation("5e968c86-44c0-4ff5-9dd2-a5339ac05733")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	// Start API
 	//crones.Cron()
 	crones.WaitMessages()
