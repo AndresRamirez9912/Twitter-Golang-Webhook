@@ -1,15 +1,12 @@
 package cron
 
 import (
-	"fmt"
 	"log"
 	"time"
 	"twitter-webhook/src/constants"
 	"twitter-webhook/src/database"
 	"twitter-webhook/src/models"
 	"twitter-webhook/src/services"
-
-	"github.com/google/uuid"
 )
 
 var Cont = 0
@@ -32,9 +29,7 @@ func WaitMessages() chan bool {
 
 func report() {
 
-	fmt.Println("Cron Ejecutado:::", Cont)
 	messages, err := services.LookDirectMessages()
-	fmt.Println("Mensajes:::", messages.Meta.Result_count)
 	//Handle Error o manejador de errores
 	if err != nil {
 		log.Fatal(err)
@@ -43,7 +38,7 @@ func report() {
 	// Comparar si son diferentes (iterar la cantidad de mensajes nuevos)
 	if Cont != messages.Meta.Result_count && messages.Data[0].Sender_id != constants.ID_BOT {
 		entry := models.TwitterField{
-			Id:            uuid.New().String(),
+			Id:            messages.Data[0].Sender_id,
 			CreatedAt:     time.Now().String(),
 			Active:        true,
 			LastMessageId: messages.Data[0].Id,
