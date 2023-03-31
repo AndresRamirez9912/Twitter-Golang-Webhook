@@ -24,7 +24,7 @@ func SendDirectMesage(userId string, message string) error {
 		return err
 	}
 
-	body, err := oaut.SendOAuthRequest(jsonBody, nil)
+	body, err := oaut.SendOAuthRequest(jsonBody)
 	if err != nil {
 		log.Fatal(err)
 		return err
@@ -50,15 +50,16 @@ func LookDirectMessages() (*models.LookUpDirectMessageResponse, error) {
 	queryParams := url.Values{}
 	queryParams.Set(constants.DM_EVENT_FIELDS_QUERY, constants.DM_EVENT_FIELDS_VALUE)
 	baseURL.RawQuery = queryParams.Encode()
-
-	oaut := oauth.CreateoAuth(constants.LOOKUP_DIRECT_MESSAGES, constants.GET)
-	test := map[string]string{constants.DM_EVENT_FIELDS_QUERY: constants.DM_EVENT_FIELDS_VALUE}
-	body, err := oaut.SendOAuthRequest(nil, test)
+	urlLookUp, err := url.QueryUnescape(baseURL.String())
+	if err != nil {
+		log.Fatal(err)
+	}
+	oaut := oauth.CreateoAuth(urlLookUp, constants.GET)
+	body, err := oaut.SendOAuthRequest(nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(string(body))
 	lookUpDMResponse := &models.LookUpDirectMessageResponse{}
 	err = json.Unmarshal(body, lookUpDMResponse)
 	if err != nil {
