@@ -21,7 +21,7 @@ func main() {
 
 	// Handlers
 	router.Get("/login", handler.LogIn)
-	router.HandleFunc("/callback", handler.Authorize)
+	router.Get("/callback", handler.Authorize)
 	router.Get("/webhook", handler.WebhookHandler)
 
 	// Start API

@@ -1,19 +1,21 @@
 package oauth
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 	"twitter-webhook/src/constants"
+	"twitter-webhook/src/utils"
 
 	"github.com/google/uuid"
 )
@@ -21,53 +23,51 @@ import (
 type oauth struct {
 	consumer_key        string
 	consumer_key_secret string
-	base_URL            string
+	URL                 string
 	method              string
 	oauth_token         string
 	oauth_token_secret  string
 }
 
 func CreateoAuth(
-	api_key string,
-	api_key_secret string,
-	base_URL string,
-	method string,
-	access_token string,
-	access_secret string) *oauth {
+	URL string,
+	method string) *oauth {
 
 	return &oauth{
-		consumer_key:        api_key,
-		consumer_key_secret: api_key_secret,
-		base_URL:            base_URL,
+		consumer_key:        os.Getenv(constants.API_KEY),        // API KEY,
+		consumer_key_secret: os.Getenv(constants.API_KEY_SECRET), // API Secret
+		URL:                 constants.BASE_URL + URL,
 		method:              method,
-		oauth_token:         access_token,
-		oauth_token_secret:  access_secret,
+		oauth_token:         os.Getenv(constants.ACCESS_TOKEN),        // Access Token
+		oauth_token_secret:  os.Getenv(constants.ACCESS_TOKEN_SECRET), // Access Secret
 	}
 }
 
-func (auth oauth) GetoauthToken() map[string]string {
+func (auth oauth) SendOAuthRequest() []byte {
+	req, err := auth.CreateOAuthRequest(nil) // I don't need Body
+	if err != nil {
+		log.Fatal(err)
+	}
+	body, err := utils.SendRequest(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return body
+}
+
+func (auth oauth) CreateOAuthRequest(body []byte) (*http.Request, error) {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	nonce := base64.StdEncoding.EncodeToString([]byte(uuid.NewString()))
 
 	baseString := auth.createBaseString(timestamp, nonce)
 	signature := createSignature(baseString, auth.consumer_key_secret, auth.oauth_token_secret)
 
-	req, err := auth.createRequest(timestamp, nonce, signature)
+	req, err := auth.createRequest(timestamp, nonce, signature, body)
 	if err != nil {
-
+		log.Fatal(err)
+		return nil, err
 	}
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-
-	}
-	defer res.Body.Close()
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-
-	}
-	return GetOAuthParameters(string(body))
+	return req, nil
 }
 
 func (auth oauth) createBaseString(timestamp string, nonce string) string {
@@ -93,7 +93,7 @@ func (auth oauth) createBaseString(timestamp string, nonce string) string {
 			encodedParameters += url.QueryEscape(fmt.Sprintf("&%s=%s", orderedKeys[k], parameters[orderedKeys[k]]))
 		}
 	}
-	return fmt.Sprintf("%s&%s&%s", strings.ToUpper(auth.method), url.QueryEscape(auth.base_URL), encodedParameters)
+	return fmt.Sprintf("%s&%s&%s", strings.ToUpper(auth.method), url.QueryEscape(auth.URL), encodedParameters)
 }
 
 func createSignature(baseURL string, consumer_secret string, oauth_token_secret string) string {
@@ -103,8 +103,8 @@ func createSignature(baseURL string, consumer_secret string, oauth_token_secret 
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
-func (auth oauth) createRequest(timestamp string, nonce string, signature string) (*http.Request, error) {
-	req, err := http.NewRequest(auth.method, auth.base_URL, nil)
+func (auth oauth) createRequest(timestamp string, nonce string, signature string, body []byte) (*http.Request, error) {
+	req, err := http.NewRequest(auth.method, auth.URL, bytes.NewBuffer(body))
 	if err != nil {
 		log.Print("Error Creating the request")
 		return nil, err
@@ -116,20 +116,12 @@ func (auth oauth) createRequest(timestamp string, nonce string, signature string
 		constants.ACCEPT:        {"*/*"},
 		constants.AUTHORIZATION: {authHeade},
 		constants.CONNECTION:    {"close"},
+		constants.CONTENT_TYPE:  {constants.APPLICATION_JSON},
 	}
 	return req, nil
 }
 
-func GetOAuthParameters(response string) map[string]string {
-	result := make(map[string]string)
-	data := strings.Split(response, "&")
-	for _, parameter := range data {
-		elements := strings.Split(parameter, "=")
-		result[elements[0]] = elements[1]
-	}
-	return result
-}
-
 func (auth oauth) GetValidationLink(oauthParameters map[string]string) {
 	fmt.Printf(constants.VALIDATION_LINK_TEMPLATE, oauthParameters[constants.OAUTH_TOKEN])
+	fmt.Println()
 }
