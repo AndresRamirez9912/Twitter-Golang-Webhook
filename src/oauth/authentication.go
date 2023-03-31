@@ -1,7 +1,6 @@
 package oauth
 
 import (
-	"bytes"
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/base64"
@@ -43,34 +42,36 @@ func CreateoAuth(
 	}
 }
 
-func (auth oauth) SendOAuthRequest() []byte {
-	req, err := auth.CreateOAuthRequest(nil) // I don't need Body
-	if err != nil {
-		log.Fatal(err)
-	}
-	body, err := utils.SendRequest(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return body
-}
-
-func (auth oauth) CreateOAuthRequest(body []byte) (*http.Request, error) {
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-	nonce := base64.StdEncoding.EncodeToString([]byte(uuid.NewString()))
-
-	baseString := auth.createBaseString(timestamp, nonce)
-	signature := createSignature(baseString, auth.consumer_key_secret, auth.oauth_token_secret)
-
-	req, err := auth.createRequest(timestamp, nonce, signature, body)
+func (auth oauth) SendOAuthRequest(body []byte) ([]byte, error) {
+	req, err := auth.createOAuthRequest(body)
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
 	}
+	bodyResponse, err := utils.SendRequest(req)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+	return bodyResponse, nil
+}
+
+func (auth oauth) createOAuthRequest(body []byte) (*http.Request, error) {
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	nonce := base64.StdEncoding.EncodeToString([]byte(uuid.NewString()))
+
+	req, err := utils.CreateRequest(auth.method, auth.URL, body)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+	baseString := auth.createBaseString(timestamp, nonce, req)
+	signature := createSignature(baseString, auth.consumer_key_secret, auth.oauth_token_secret)
+	auth.sign(signature, timestamp, nonce, req)
 	return req, nil
 }
 
-func (auth oauth) createBaseString(timestamp string, nonce string) string {
+func (auth oauth) createBaseString(timestamp string, nonce string, req *http.Request) string {
 	parameters := map[string]string{
 		constants.OAUTH_CONSUMER_KEY:     auth.consumer_key,
 		constants.OAUTH_SIGNATURE_METHOD: constants.OAUTH_METHOD,
@@ -85,15 +86,25 @@ func (auth oauth) createBaseString(timestamp string, nonce string) string {
 		orderedKeys = append(orderedKeys, k)
 	}
 	sort.Strings(orderedKeys)
-	encodedParameters := " "
+	encodedQueries := ""
+
+	for k, v := range req.URL.Query() {
+		if encodedQueries == "" {
+			encodedQueries = url.QueryEscape(fmt.Sprintf("%s=%s", k, url.QueryEscape(v[0])))
+		} else {
+			encodedQueries += url.QueryEscape(fmt.Sprintf("&%s=%s", k, url.QueryEscape(v[0])))
+		}
+	}
+
+	encodedParameters := ""
 	for k := range orderedKeys {
-		if encodedParameters == " " {
+		if encodedParameters == "" && encodedQueries == "" {
 			encodedParameters = url.QueryEscape(fmt.Sprintf("%s=%s", orderedKeys[k], parameters[orderedKeys[k]]))
 		} else {
 			encodedParameters += url.QueryEscape(fmt.Sprintf("&%s=%s", orderedKeys[k], parameters[orderedKeys[k]]))
 		}
 	}
-	return fmt.Sprintf("%s&%s&%s", strings.ToUpper(auth.method), url.QueryEscape(auth.URL), encodedParameters)
+	return fmt.Sprintf("%s&%s&%s", strings.ToUpper(auth.method), url.QueryEscape(constants.BASE_URL+req.URL.Path), (encodedQueries + encodedParameters))
 }
 
 func createSignature(baseURL string, consumer_secret string, oauth_token_secret string) string {
@@ -103,25 +114,11 @@ func createSignature(baseURL string, consumer_secret string, oauth_token_secret 
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
-func (auth oauth) createRequest(timestamp string, nonce string, signature string, body []byte) (*http.Request, error) {
-	req, err := http.NewRequest(auth.method, auth.URL, bytes.NewBuffer(body))
-	if err != nil {
-		log.Print("Error Creating the request")
-		return nil, err
-	}
-
-	authHeade := fmt.Sprintf(constants.AUTHORIZATION_TEMPLATE, auth.consumer_key, nonce, url.QueryEscape(signature), timestamp, auth.oauth_token)
-
-	req.Header = http.Header{
-		constants.ACCEPT:        {"*/*"},
-		constants.AUTHORIZATION: {authHeade},
-		constants.CONNECTION:    {"close"},
-		constants.CONTENT_TYPE:  {constants.APPLICATION_JSON},
-	}
-	return req, nil
+func (auth oauth) sign(signature string, timestamp string, nonce string, req *http.Request) {
+	authHeader := fmt.Sprintf(constants.AUTHORIZATION_TEMPLATE, auth.consumer_key, nonce, url.QueryEscape(signature), timestamp, auth.oauth_token)
+	req.Header.Add(constants.AUTHORIZATION, authHeader)
 }
 
 func (auth oauth) GetValidationLink(oauthParameters map[string]string) {
-	fmt.Printf(constants.VALIDATION_LINK_TEMPLATE, oauthParameters[constants.OAUTH_TOKEN])
-	fmt.Println()
+	fmt.Printf(constants.VALIDATION_LINK_TEMPLATE+"\n", oauthParameters[constants.OAUTH_TOKEN])
 }
