@@ -2,14 +2,16 @@ package cron
 
 import (
 	"log"
+	"strings"
 	"time"
 	"twitter-webhook/src/constants"
 	"twitter-webhook/src/database"
+	"twitter-webhook/src/menu"
 	"twitter-webhook/src/models"
 	"twitter-webhook/src/services"
 )
 
-var Cont = 0
+var LastMessage = "1642990609106452485"
 
 func WaitMessages() chan bool {
 	ticker := time.NewTicker(5 * time.Second)
@@ -30,24 +32,26 @@ func WaitMessages() chan bool {
 func report() {
 
 	messages, err := services.LookDirectMessages()
-	//Handle Error o manejador de errores
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Comparar si son diferentes (iterar la cantidad de mensajes nuevos)
-	if Cont != messages.Meta.Result_count && messages.Data[0].Sender_id != constants.ID_BOT {
-		entry := models.TwitterField{
-			Id:            messages.Data[0].Sender_id,
-			CreatedAt:     time.Now().String(),
-			Active:        true,
-			LastMessageId: messages.Data[0].Id,
+	msgCount := 0
+	for messages.Data[msgCount].Id != LastMessage {
+		if constants.ID_BOT != messages.Data[msgCount].Sender_id {
+			entry := models.TwitterField{
+				Id:            messages.Data[msgCount].Sender_id,
+				CreatedAt:     time.Now().String(),
+				Active:        true,
+				LastMessageId: messages.Data[msgCount].Id,
+			}
+			err := database.CreateItem(entry)
+			if err != nil {
+				log.Fatal(err)
+			}
+			response := menu.Response(strings.ToLower(messages.Data[msgCount].Text))
+			services.SendDirectMesage(entry.Id, response)
 		}
-		err := database.CreateItem(entry)
-		if err != nil {
-			log.Fatal(err)
-		}
-		Cont = messages.Meta.Result_count
-		// Enviar Respuesta al cliente
-		services.SendDirectMesage(entry.Id, "El bot del banco Popular te da la Bienvenida")
+		msgCount++
 	}
+	LastMessage = messages.Data[0].Id
 }
