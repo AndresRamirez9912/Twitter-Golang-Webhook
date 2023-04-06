@@ -102,7 +102,7 @@ func CreateItem(dataField models.TwitterField) error {
 	return nil
 }
 
-func FinishedCoversation(id string) error {
+func ChangeStatus(id string, status bool) error {
 	dynamoClient, err := createDynamoCLient()
 	if err != nil {
 		log.Fatal(err)
@@ -116,7 +116,7 @@ func FinishedCoversation(id string) error {
 		},
 		UpdateExpression: aws.String("set Active = :active"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":active": &types.AttributeValueMemberBOOL{Value: false},
+			":active": &types.AttributeValueMemberBOOL{Value: status},
 		},
 	})
 
