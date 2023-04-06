@@ -26,3 +26,16 @@ type dataUpDirectMessageResponse struct {
 	Sender_id          string `json:"sender_id"`
 	Dm_conversation_id string `json:"dm_conversation_id"`
 }
+
+type UsersActive struct {
+	Users       map[string]TwitterField
+	LastMessage string
+	ActiveUsers []string
+}
+
+type TwitterField struct {
+	Id            string
+	CreatedAt     string
+	Active        bool
+	LastMessageId string
+}
