@@ -85,6 +85,9 @@ func responseActve() {
 			Active:        true,
 			LastMessageId: messages.Data[0].Id,
 		}
+
+		// Update last message in the DB
+		database.UpdateLastMessageId(userId, messages.Data[0].Id)
 	}
 }
 

@@ -127,6 +127,31 @@ func ChangeStatus(id string, status bool) error {
 	return nil
 }
 
+func UpdateLastMessageId(id string, messageId string) error {
+	dynamoClient, err := createDynamoCLient()
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	_, err = dynamoClient.UpdateItem(context.TODO(), &dynamodb.UpdateItemInput{
+		TableName: aws.String(constants.TABLE_NAME),
+		Key: map[string]types.AttributeValue{
+			"Id": &types.AttributeValueMemberS{Value: id},
+		},
+		UpdateExpression: aws.String("set LastMessageId = :lastMessage"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":lastMessage": &types.AttributeValueMemberS{Value: messageId},
+		},
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return nil
+}
+
 func createDynamoCLient() (*dynamodb.Client, error) {
 	// Set AWS
 	config, err := config.LoadDefaultConfig(context.TODO(), func(opts *config.LoadOptions) error {
