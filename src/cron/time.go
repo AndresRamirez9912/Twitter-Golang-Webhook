@@ -67,7 +67,7 @@ func responseActve() {
 
 		// Check If the sender was the bot or, the message is equal to the previous
 		lastMessageID := userRegister.Users[userId].LastMessageId
-		if messages.Data[0].Sender_id == constants.ID_BOT || messages.Data[0].Id != lastMessageID {
+		if (messages.Data[0].Sender_id == constants.ID_BOT) || (messages.Data[0].Id == lastMessageID) {
 			continue // Continue to the next chat
 		}
 
